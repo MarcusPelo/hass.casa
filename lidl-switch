@@ -1,0 +1,87 @@
+blueprint:
+  name: Lidl Dimmer switch (Zigbee2MQTT)
+  description:
+    "
+    "
+  domain: automation
+  input:
+    action_sensor:
+      name: Action Sensor
+      description: Zigbee2mqtt Lidl Dimmer action
+      selector:
+        entity:
+          integration: mqtt
+          domain: sensor
+          multiple: false
+    helper_last_controller_event:
+      name: (Required) Helper - Last Controller Event
+      description:
+        Input Text used to store the last event fired by the controller.
+        You will need to manually create a text input Helper entity for this.
+      default: ""
+      selector:
+        entity:
+          domain: input_text
+          multiple: false
+    on:
+      name: ON button press
+      description: Action to run
+      default: []
+      selector:
+        action: {}
+    brightness_step_up:
+      name: UP button press
+      description: Action to run
+      default: []
+      selector:
+        action: {}
+    brightness_step_down:
+      name: DOWN button release
+      description: Action to run
+      default: []
+      selector:
+        action: {}
+    off:
+      name: OFF button press
+      description: Action to run
+      default: []
+      selector:
+        action: {}
+  source_url: "https://gist.github.com/CrazyCoder/28d660d9e2e8464458e591ad79b3698e"
+mode: restart
+max_exceeded: silent
+trigger:
+  - platform: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input action_sensor
+condition:
+  - condition: template
+    value_template: '{{ trigger.event.data.new_state.state not in ("", "None", "unknown") }}'
+action:
+  - variables:
+      helper_last_controller_event: !input helper_last_controller_event
+      command: "{{ trigger.event.data.new_state.state }}"
+      prev_command: "{{ states(helper_last_controller_event) }}"
+  # - service: logbook.log
+  #   data:
+  #     name: "command: "
+  #     message: >
+  #       {{ command }} - {{ prev_command }}
+  - service: input_text.set_value
+    data:
+      entity_id: !input helper_last_controller_event
+      value: "{{ command }}"
+  - choose:
+      - conditions:
+          - '{{ command == "on" }}'
+        sequence: !input on
+      - conditions:
+          - '{{ command == "brightness_step_up" }}'
+        sequence: !input brightness_step_up
+      - conditions:
+          - '{{ command == "brightness_step_down" }}'
+        sequence: !input brightness_step_down
+      - conditions:
+          - '{{ command == "off" }}'
+        sequence: !input off
